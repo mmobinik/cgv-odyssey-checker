@@ -60,6 +60,7 @@ def check():
 
 
 if __name__ == "__main__":
+    send_email("تست ✅", "اگه اینو گرفتی یعنی ایمیل درست تنظیم شده")
     try:
         found, seats = check()
     except Exception as e:
