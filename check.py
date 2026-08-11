@@ -8,7 +8,6 @@ CO_CD = "A420"
 SITE_NO = "0089"          # CGV سنتام‌سیتی
 MOV_NO = "30001323"       # فیلم اودیسه
 TARGET_DATE = "20260829"  # 29 اگوست
-TARGET_TIME = "1055"      # ساعت 10:55
 
 API_URL = "https://cgv.co.kr/api/v1/booking/searchSchByMov"
 PARAMS = {
@@ -33,11 +32,6 @@ NOTIFY_TO = os.environ["NOTIFY_TO"]
 
 
 def send_email(subject: str, body: str):
-    # چاپ اطلاعات دیباگ (بدون افشای پسورد کامل)
-    print(f"[DEBUG] GMAIL_ADDRESS = {GMAIL_ADDRESS!r}")
-    print(f"[DEBUG] NOTIFY_TO     = {NOTIFY_TO!r}")
-    print(f"[DEBUG] APP_PASSWORD length = {len(GMAIL_APP_PASSWORD)} chars")
-
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
     msg["From"] = GMAIL_ADDRESS
@@ -45,26 +39,15 @@ def send_email(subject: str, body: str):
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=20) as server:
-            server.set_debuglevel(1)  # چاپ کامل مکالمه‌ی SMTP در لاگ
-            login_resp = server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
-            print(f"[DEBUG] login response: {login_resp}")
-
+            server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
             refused = server.sendmail(GMAIL_ADDRESS, [NOTIFY_TO], msg.as_string())
             if refused:
                 print(f"[WARN] این آدرس‌ها توسط سرور رد شدند: {refused}")
             else:
-                print("[OK] sendmail بدون هیچ آدرس ردشده تکمیل شد")
-    except smtplib.SMTPAuthenticationError as e:
-        print(f"[ERROR] خطای احراز هویت (پسورد/ایمیل اشتباه است): {e}")
-        raise
-    except smtplib.SMTPRecipientsRefused as e:
-        print(f"[ERROR] گیرنده رد شد: {e}")
-        raise
+                print(f"[OK] ایمیل با موضوع '{subject}' به {NOTIFY_TO} ارسال شد")
     except Exception as e:
-        print(f"[ERROR] خطای غیرمنتظره در ارسال ایمیل: {type(e).__name__}: {e}")
+        print(f"[ERROR] خطا در ارسال ایمیل: {type(e).__name__}: {e}")
         raise
-
-    print(f"[OK] ایمیل با موضوع '{subject}' به {NOTIFY_TO} ارسال شد")
 
 
 def check():
@@ -72,36 +55,43 @@ def check():
     resp.raise_for_status()
     payload = resp.json()
     sessions = payload.get("data") or []
-    for s in sessions:
-        if s.get("scnsrtTm") == TARGET_TIME:
+
+    if sessions:
+        print(f"تعداد {len(sessions)} سانس برای تاریخ {TARGET_DATE} پیدا شد:")
+        for s in sessions:
+            time = s.get("scnsrtTm")
             seats = s.get("frSeatCnt")
-            print(f"سانس {TARGET_TIME} پیدا شد - صندلی خالی: {seats}")
-            return True, seats
-    print(f"هنوز سانس {TARGET_TIME} برای تاریخ {TARGET_DATE} باز نشده")
+            print(f"  - ساعت {time} - صندلی خالی: {seats}")
+        return True, sessions
+
+    print(f"هنوز هیچ سانسی برای تاریخ {TARGET_DATE} باز نشده")
     return False, None
 
 
 if __name__ == "__main__":
-    # --- تست ارسال ایمیل (این خط رو بعد از اطمینان از کارکرد حذف کن) ---
-    try:
-        send_email("تست ✅", "اگه اینو گرفتی یعنی ایمیل درست تنظیم شده")
-    except Exception:
-        print("[FATAL] ارسال ایمیل تست شکست خورد - اجرا متوقف می‌شود")
-        raise SystemExit(1)
+    # --- ایمیل تست موقت (بعداً این بلاک رو حذف کن) ---
+    send_email(
+        "تست نسخه جدید ✅ (کل روز 29ام)",
+        "این ایمیل تستیه برای نسخه‌ی جدید کد که کل سانس‌های 29 اگوست رو چک می‌کنه.",
+    )
 
     try:
-        found, seats = check()
+        found, sessions = check()
     except Exception as e:
         print(f"خطا در چک کردن: {e}")
         raise SystemExit(0)
 
     if found:
+        lines = [
+            f"ساعت {s.get('scnsrtTm')} - صندلی خالی: {s.get('frSeatCnt')}"
+            for s in sessions
+        ]
         send_email(
-            subject="🎬 بلیط اودیسه ساعت 10:55 (سنتام‌سیتی) باز شد!",
+            subject="🎬 بلیط اودیسه تاریخ 29 اگوست (سنتام‌سیتی) باز شد!",
             body=(
-                f"سانس ساعت 10:55 تاریخ 29 اگوست الان توی سیستم CGV دیده می‌شه.\n"
-                f"صندلی خالی فعلی: {seats}\n\n"
-                f"سریع برو رزرو کن: https://cgv.co.kr/cnm/movieBook/movie"
+                "سانس‌(های) زیر برای تاریخ 29 اگوست الان توی سیستم CGV دیده می‌شن:\n\n"
+                + "\n".join(lines)
+                + "\n\nسریع برو رزرو کن: https://cgv.co.kr/cnm/movieBook/movie"
             ),
         )
         print("ایمیل فرستاده شد ✅")
