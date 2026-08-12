@@ -6,7 +6,7 @@ import requests
 CO_CD = "A420"
 SITE_NO = "0089"          # CGV سنتام‌سیتی
 MOV_NO = "30001323"       # فیلم اودیسه
-TARGET_DATE = "20260825"  # 29 اگوست
+TARGET_DATE = "20260829"  # 29 اگوست
 API_URL = "https://cgv.co.kr/api/v1/booking/searchSchByMov"
 PARAMS = {
     "coCd": CO_CD,
