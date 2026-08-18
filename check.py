@@ -40,9 +40,9 @@ def send_email(subject: str, body: str):
             server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
             refused = server.sendmail(GMAIL_ADDRESS, [NOTIFY_TO], msg.as_string())
             if refused:
-                print(f"[WARN] این آدرس‌ها توسط سرور رد شدند: {refused}")
+                print(f"[WARN] برخی گیرنده‌ها توسط سرور رد شدند (تعداد: {len(refused)})")
             else:
-                print(f"[OK] ایمیل با موضوع '{subject}' به {NOTIFY_TO} ارسال شد")
+                print(f"[OK] ایمیل با موضوع '{subject}' ارسال شد")
     except Exception as e:
         print(f"[ERROR] خطا در ارسال ایمیل: {type(e).__name__}: {e}")
         raise
